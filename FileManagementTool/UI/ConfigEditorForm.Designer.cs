@@ -1,17 +1,32 @@
-﻿// ConfigEditorForm.Designer.cs
-namespace FileManagementTool
+﻿namespace FileManagementTool
 {
     partial class ConfigEditorForm
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
+        private System.Windows.Forms.TableLayoutPanel mainLayoutPanel;
+        private System.Windows.Forms.Panel panelLeft;
+        private System.Windows.Forms.Label lblCategoriesTitle;
+        private System.Windows.Forms.ListBox lstCategories;
+        private System.Windows.Forms.Button btnAddCategory;
+        private System.Windows.Forms.Button btnRemoveCategory;
+        private System.Windows.Forms.Panel panelRight;
+        private System.Windows.Forms.Label lblEditorTitle;
+        private System.Windows.Forms.Label lblCategoryName;
+        private System.Windows.Forms.TextBox txtCategoryName;
+        private System.Windows.Forms.Label lblFolderName;
+        private System.Windows.Forms.TextBox txtFolderName;
+        private System.Windows.Forms.Label lblExtensions;
+        private System.Windows.Forms.FlowLayoutPanel pnlExtensions;
+        private System.Windows.Forms.Panel panelExtensionInput;
+        private System.Windows.Forms.TextBox txtNewExtension;
+        private System.Windows.Forms.Button btnAddExtension;
+        private System.Windows.Forms.Label lblExtensionError;
+        private System.Windows.Forms.Label lblEditorStatus;
+        private System.Windows.Forms.Panel panelBottom;
+        private System.Windows.Forms.Button btnSave;
+        private System.Windows.Forms.Button btnReset;
+        private System.Windows.Forms.Button btnClose;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -21,12 +36,6 @@ namespace FileManagementTool
             base.Dispose(disposing);
         }
 
-        #region Windows Form Designer generated code
-
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             this.mainLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
@@ -44,6 +53,7 @@ namespace FileManagementTool
             this.lblExtensions = new System.Windows.Forms.Label();
             this.pnlExtensions = new System.Windows.Forms.FlowLayoutPanel();
             this.panelExtensionInput = new System.Windows.Forms.Panel();
+            this.txtNewExtension = new System.Windows.Forms.TextBox();
             this.btnAddExtension = new System.Windows.Forms.Button();
             this.lblExtensionError = new System.Windows.Forms.Label();
             this.lblEditorStatus = new System.Windows.Forms.Label();
@@ -51,7 +61,6 @@ namespace FileManagementTool
             this.btnSave = new System.Windows.Forms.Button();
             this.btnReset = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
-            this.txtNewExtension = new System.Windows.Forms.TextBox();
             this.mainLayoutPanel.SuspendLayout();
             this.panelLeft.SuspendLayout();
             this.panelRight.SuspendLayout();
@@ -115,6 +124,7 @@ namespace FileManagementTool
             this.lstCategories.Name = "lstCategories";
             this.lstCategories.Size = new System.Drawing.Size(332, 380);
             this.lstCategories.TabIndex = 1;
+            this.lstCategories.SelectedIndexChanged += new System.EventHandler(this.lstCategories_SelectedIndexChanged);
             // 
             // btnAddCategory
             // 
@@ -131,6 +141,7 @@ namespace FileManagementTool
             this.btnAddCategory.TabIndex = 2;
             this.btnAddCategory.Text = "+ Add New Category";
             this.btnAddCategory.UseVisualStyleBackColor = false;
+            this.btnAddCategory.Click += new System.EventHandler(this.btnAddCategory_Click);
             // 
             // btnRemoveCategory
             // 
@@ -147,6 +158,7 @@ namespace FileManagementTool
             this.btnRemoveCategory.TabIndex = 3;
             this.btnRemoveCategory.Text = "Remove Selected";
             this.btnRemoveCategory.UseVisualStyleBackColor = false;
+            this.btnRemoveCategory.Click += new System.EventHandler(this.btnRemoveCategory_Click);
             // 
             // panelRight
             // 
@@ -188,6 +200,7 @@ namespace FileManagementTool
             this.lblCategoryName.Size = new System.Drawing.Size(116, 20);
             this.lblCategoryName.TabIndex = 1;
             this.lblCategoryName.Text = "Category Name:";
+            this.lblCategoryName.Click += new System.EventHandler(this.lblCategoryName_Click);
             // 
             // txtCategoryName
             // 
@@ -198,6 +211,7 @@ namespace FileManagementTool
             this.txtCategoryName.Name = "txtCategoryName";
             this.txtCategoryName.Size = new System.Drawing.Size(402, 27);
             this.txtCategoryName.TabIndex = 2;
+            this.txtCategoryName.TextChanged += new System.EventHandler(this.txtCategoryName_TextChanged);
             // 
             // lblFolderName
             // 
@@ -218,6 +232,7 @@ namespace FileManagementTool
             this.txtFolderName.Name = "txtFolderName";
             this.txtFolderName.Size = new System.Drawing.Size(402, 27);
             this.txtFolderName.TabIndex = 4;
+            this.txtFolderName.TextChanged += new System.EventHandler(this.txtFolderName_TextChanged);
             // 
             // lblExtensions
             // 
@@ -255,6 +270,15 @@ namespace FileManagementTool
             this.panelExtensionInput.Size = new System.Drawing.Size(402, 35);
             this.panelExtensionInput.TabIndex = 7;
             // 
+            // txtNewExtension
+            // 
+            this.txtNewExtension.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtNewExtension.Location = new System.Drawing.Point(0, 5);
+            this.txtNewExtension.Name = "txtNewExtension";
+            this.txtNewExtension.Size = new System.Drawing.Size(100, 27);
+            this.txtNewExtension.TabIndex = 0;
+            this.txtNewExtension.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.txtNewExtension_KeyPress);
+            // 
             // btnAddExtension
             // 
             this.btnAddExtension.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(167)))), ((int)(((byte)(69)))));
@@ -268,6 +292,7 @@ namespace FileManagementTool
             this.btnAddExtension.TabIndex = 1;
             this.btnAddExtension.Text = "Add";
             this.btnAddExtension.UseVisualStyleBackColor = false;
+            this.btnAddExtension.Click += new System.EventHandler(this.btnAddExtension_Click);
             // 
             // lblExtensionError
             // 
@@ -303,6 +328,7 @@ namespace FileManagementTool
             this.panelBottom.Name = "panelBottom";
             this.panelBottom.Size = new System.Drawing.Size(894, 92);
             this.panelBottom.TabIndex = 2;
+            this.panelBottom.Resize += new System.EventHandler(this.panelBottom_Resize);
             // 
             // btnSave
             // 
@@ -317,6 +343,7 @@ namespace FileManagementTool
             this.btnSave.TabIndex = 0;
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = false;
+            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // btnReset
             // 
@@ -331,6 +358,7 @@ namespace FileManagementTool
             this.btnReset.TabIndex = 1;
             this.btnReset.Text = "Reset";
             this.btnReset.UseVisualStyleBackColor = false;
+            this.btnReset.Click += new System.EventHandler(this.btnReset_Click);
             // 
             // btnClose
             // 
@@ -345,14 +373,7 @@ namespace FileManagementTool
             this.btnClose.TabIndex = 2;
             this.btnClose.Text = "Close";
             this.btnClose.UseVisualStyleBackColor = false;
-            // 
-            // txtNewExtension
-            // 
-            this.txtNewExtension.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.txtNewExtension.Location = new System.Drawing.Point(3, 3);
-            this.txtNewExtension.Name = "txtNewExtension";
-            this.txtNewExtension.Size = new System.Drawing.Size(100, 27);
-            this.txtNewExtension.TabIndex = 0;
+            this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
             // 
             // ConfigEditorForm
             // 
@@ -377,31 +398,5 @@ namespace FileManagementTool
             this.ResumeLayout(false);
 
         }
-
-        #endregion
-
-        private System.Windows.Forms.TableLayoutPanel mainLayoutPanel;
-        private System.Windows.Forms.Panel panelLeft;
-        private System.Windows.Forms.Label lblCategoriesTitle;
-        private System.Windows.Forms.ListBox lstCategories;
-        private System.Windows.Forms.Button btnAddCategory;
-        private System.Windows.Forms.Button btnRemoveCategory;
-        private System.Windows.Forms.Panel panelRight;
-        private System.Windows.Forms.Label lblEditorTitle;
-        private System.Windows.Forms.Label lblCategoryName;
-        private System.Windows.Forms.TextBox txtCategoryName;
-        private System.Windows.Forms.Label lblFolderName;
-        private System.Windows.Forms.TextBox txtFolderName;
-        private System.Windows.Forms.Label lblExtensions;
-        private System.Windows.Forms.FlowLayoutPanel pnlExtensions;
-        private System.Windows.Forms.Panel panelExtensionInput;
-        private System.Windows.Forms.Button btnAddExtension;
-        private System.Windows.Forms.Label lblExtensionError;
-        private System.Windows.Forms.Label lblEditorStatus;
-        private System.Windows.Forms.Panel panelBottom;
-        private System.Windows.Forms.Button btnSave;
-        private System.Windows.Forms.Button btnReset;
-        private System.Windows.Forms.Button btnClose;
-        private System.Windows.Forms.TextBox txtNewExtension;
     }
 }

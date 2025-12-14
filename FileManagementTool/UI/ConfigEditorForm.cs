@@ -1,63 +1,84 @@
-﻿// ConfigEditorForm.cs
+﻿// ConfigEditorForm.cs (COMPLETE VERSION)
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using FileManagementTool.Configuration;
 using FileManagementTool.Models;
 
 namespace FileManagementTool
 {
     public partial class ConfigEditorForm : Form
     {
-        private List<Category> categories = new List<Category>();
+        private List<Category> categories;
         private Category selectedCategory = null;
         private bool hasChanges = false;
+        private ConfigurationManager configManager;
 
         public ConfigEditorForm()
         {
             InitializeComponent();
-            SetupInitialState();
-        }
 
-        private void SetupInitialState()
-        {
-            // Load some sample categories for testing
-            LoadSampleCategories();
+            // Initialize ConfigurationManager
+            configManager = new ConfigurationManager();
+
+            // Load configuration
+            if (!configManager.LoadConfiguration())
+            {
+                MessageBox.Show("Failed to load configuration. Using defaults.",
+                    "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            categories = configManager.GetCategories();
+
+            SetupInitialState();
 
             // Populate the list
             RefreshCategoryList();
 
-            // Select first category if exists
+            // Select first category if available
             if (categories.Count > 0)
             {
                 lstCategories.SelectedIndex = 0;
             }
 
-            // Update UI
             UpdateUI();
         }
 
-        private void LoadSampleCategories()
+        private void SetupInitialState()
         {
-            categories = new List<Category>
-            {
-                new Category("Documents", "Documents", ".txt", ".doc", ".pdf"),
-                new Category("Images", "Images", ".jpg", ".png", ".gif"),
-                new Category("Videos", "Videos", ".mp4", ".avi", ".mov")
-            };
+            // Center buttons in bottom panel
+            CenterBottomButtons();
+
+
+            txtNewExtension.Text = "";
+
+            UpdateButtonStates();
+
+            // Hide error label
+            lblExtensionError.Visible = false;
         }
 
-        private void RefreshCategoryList()
+        private void CenterBottomButtons()
         {
-            lstCategories.DataSource = null;
-            lstCategories.DataSource = categories;
+            // Center the buttons horizontally in the bottom panel
+            int buttonWidth = 120;
+            int buttonHeight = 40;
+            int spacing = 15;
+            int totalWidth = (buttonWidth * 3) + (spacing * 2);
+
+            int startX = (panelBottom.Width - totalWidth) / 2;
+            int startY = (panelBottom.Height - buttonHeight) / 2;
+
+            btnSave.Location = new Point(startX, startY);
+            btnReset.Location = new Point(startX + buttonWidth + spacing, startY);
+            btnClose.Location = new Point(startX + (buttonWidth + spacing) * 2, startY);
         }
 
-        private void UpdateUI()
+        private void UpdateButtonStates()
         {
-            // Enable/disable buttons based on selection
             bool hasSelection = selectedCategory != null;
 
             btnRemoveCategory.Enabled = hasSelection && categories.Count > 1;
@@ -66,16 +87,46 @@ namespace FileManagementTool
             txtNewExtension.Enabled = hasSelection;
             btnAddExtension.Enabled = hasSelection;
             btnSave.Enabled = hasChanges;
+        }
 
-            // Update status
-            if (selectedCategory != null)
+        private void RefreshCategoryList()
+        {
+            lstCategories.DataSource = null;
+            lstCategories.DataSource = categories;
+            lstCategories.DisplayMember = "Name";
+        }
+
+        private void SelectCategory(Category category)
+        {
+            selectedCategory = category;
+
+            if (category != null)
             {
-                lblEditorStatus.Text = $"{selectedCategory.Extensions.Count} extensions";
+                txtCategoryName.Text = category.Name;
+                txtFolderName.Text = category.FolderName;
+                RefreshExtensions();
+
+                // Update status
+                UpdateStatusLabel();
+
+                // Highlight in list
+                lstCategories.SelectedItem = category;
             }
             else
             {
-                lblEditorStatus.Text = "No category selected";
+                ClearEditor();
             }
+
+            UpdateButtonStates();
+        }
+
+        private void ClearEditor()
+        {
+            txtCategoryName.Clear();
+            txtFolderName.Clear();
+            pnlExtensions.Controls.Clear();
+            lblEditorStatus.Text = "No category selected";
+            lblEditorStatus.ForeColor = Color.Gray;
         }
 
         private void RefreshExtensions()
@@ -88,6 +139,8 @@ namespace FileManagementTool
             {
                 AddExtensionChip(extension);
             }
+
+            UpdateStatusLabel();
         }
 
         private void AddExtensionChip(string extension)
@@ -128,6 +181,80 @@ namespace FileManagementTool
 
             chipPanel.Controls.Add(lblExtension);
             pnlExtensions.Controls.Add(chipPanel);
+        }
+
+        private void UpdateStatusLabel()
+        {
+            if (selectedCategory == null)
+            {
+                lblEditorStatus.Text = "No category selected";
+                lblEditorStatus.ForeColor = Color.Gray;
+                return;
+            }
+
+            int count = selectedCategory.Extensions.Count;
+            string plural = count == 1 ? "" : "s";
+            lblEditorStatus.Text = $"{count} extension{plural}";
+
+            // Validate
+            bool isValid = ValidateCategory(selectedCategory);
+            if (!isValid)
+            {
+                lblEditorStatus.Text += " (Invalid)";
+                lblEditorStatus.ForeColor = Color.Red;
+            }
+            else
+            {
+                lblEditorStatus.ForeColor = Color.Gray;
+            }
+        }
+
+        private bool ValidateCategory(Category category)
+        {
+            return !string.IsNullOrWhiteSpace(category.Name) &&
+                   !string.IsNullOrWhiteSpace(category.FolderName) &&
+                   category.Extensions.Count > 0;
+        }
+
+        private bool ValidateAllCategories()
+        {
+            if (categories.Count == 0)
+            {
+                MessageBox.Show("At least one category is required.",
+                    "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            // Check for empty categories
+            foreach (var category in categories)
+            {
+                if (!ValidateCategory(category))
+                {
+                    MessageBox.Show($"Category '{category.Name}' is invalid.\n\n" +
+                        "Please check:\n" +
+                        "• Category name is not empty\n" +
+                        "• Folder name is not empty\n" +
+                        "• At least one extension is specified",
+                        "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void UpdateUI()
+        {
+            // Update title with change indicator
+            string title = "Configuration Editor";
+            if (hasChanges) title += " *";
+            this.Text = title;
+
+            // Update button states
+            UpdateButtonStates();
+
+            // Update status
+            UpdateStatusLabel();
         }
 
         // Event Handlers
@@ -212,7 +339,34 @@ namespace FileManagementTool
             {
                 selectedCategory.Name = txtCategoryName.Text;
                 hasChanges = true;
-                RefreshCategoryList();
+
+                // Instead of refreshing the entire list, update just this item
+                // This prevents the SelectedIndexChanged event from firing
+                int index = categories.IndexOf(selectedCategory);
+                if (index >= 0)
+                {
+                    // Update the list item directly without changing DataSource
+                    // This is a workaround for Windows Forms ListBox
+                    var items = lstCategories.Items;
+                    if (index < items.Count)
+                    {
+                        // We can't directly update the item in a bound listbox
+                        // So we'll disable the event, refresh, and reselect
+                        lstCategories.SelectedIndexChanged -= lstCategories_SelectedIndexChanged;
+                        try
+                        {
+                            lstCategories.DataSource = null;
+                            lstCategories.DataSource = categories;
+                            lstCategories.DisplayMember = "Name";
+                            lstCategories.SelectedIndex = index;
+                        }
+                        finally
+                        {
+                            lstCategories.SelectedIndexChanged += lstCategories_SelectedIndexChanged;
+                        }
+                    }
+                }
+
                 UpdateUI();
             }
         }
@@ -262,20 +416,47 @@ namespace FileManagementTool
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Save functionality will be implemented next.",
-                "Save", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // Validate all categories before saving
+            if (!ValidateAllCategories())
+            {
+                return;
+            }
 
-            // For now, just mark as saved
-            hasChanges = false;
-            UpdateUI();
+            // Save using ConfigurationManager
+            if (configManager.SaveConfiguration(categories))
+            {
+                hasChanges = false;
+                MessageBox.Show("Configuration saved successfully!",
+                    "Save Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                UpdateUI();
+            }
+            else
+            {
+                MessageBox.Show("Error saving configuration.",
+                    "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void btnReset_Click(object sender, EventArgs e)
         {
-            if (MessageBox.Show("Reset to default categories?",
-                "Reset", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (!hasChanges && categories.Count == 6) // 6 is default count
             {
-                LoadSampleCategories();
+                MessageBox.Show("Configuration is already at default settings.",
+                    "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                "Reset all categories to default settings?\n\n" +
+                "This will replace all your current categories with the default ones.",
+                "Reset to Default",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                categories = configManager.GetDefaultCategories();
                 RefreshCategoryList();
 
                 if (categories.Count > 0)
@@ -285,6 +466,9 @@ namespace FileManagementTool
 
                 hasChanges = true;
                 UpdateUI();
+
+                MessageBox.Show("Configuration reset to defaults. Click Save to apply changes.",
+                    "Reset Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -311,6 +495,21 @@ namespace FileManagementTool
                 btnAddExtension_Click(sender, e);
                 e.Handled = true;
             }
+        }
+
+        private void panelBottom_Resize(object sender, EventArgs e)
+        {
+            CenterBottomButtons();
+        }
+
+        private void panelRight_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void lblCategoryName_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

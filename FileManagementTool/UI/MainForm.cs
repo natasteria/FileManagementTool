@@ -1,20 +1,24 @@
-﻿using FileManagementTool.FileManagement;
+﻿using FileManagementTool.Configuration;
+using FileManagementTool.ErrorHandling;
+using FileManagementTool.FileManagement;
 using FileManagementTool.FolderManagement;
 using FileManagementTool.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
-using FileManagementTool.ErrorHandling;
-
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace FileManagementTool
 {
     public partial class MainForm : Form
     {
+        private ConfigurationManager _configManager; // Single instance for entire form
+
         public MainForm()
         {
             InitializeComponent();
+            _configManager = new ConfigurationManager(); // Initialize once
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -91,12 +95,28 @@ namespace FileManagementTool
 
         private void btnEditConfig_Click(object sender, EventArgs e)
         {
+            // Only allow editing if NOT using default configuration
+            if (chkUseDefaultConfig.Checked)
+            {
+                MessageBox.Show("Please uncheck 'Use default configuration' to edit custom settings.",
+                    "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             // Open the configuration editor
             using (var editor = new ConfigEditorForm())
             {
                 editor.ShowDialog();
 
-                // After editor closes, update status
+                // After editor closes, force reload configuration
+                // This ensures we pick up any changes made in the editor
+                if (!chkUseDefaultConfig.Checked)
+                {
+                    // If we're using custom config, reload it
+                    _configManager.LoadConfiguration();
+                }
+
+                // Update status
                 UpdateConfigStatus();
             }
         }
@@ -112,10 +132,13 @@ namespace FileManagementTool
 
             if (result == DialogResult.Yes)
             {
-                // TODO: Implement actual reset logic
-                // For now, just update the status
+                // Actually reset the configuration
+                _configManager.ResetToDefaults();
+
+                // Update the UI
                 chkUseDefaultConfig.Checked = true;
                 UpdateConfigStatus();
+                UpdateButtonStates();
 
                 MessageBox.Show("Configuration has been reset to defaults.",
                     "Reset Complete",
@@ -133,8 +156,20 @@ namespace FileManagementTool
             }
             else
             {
-                lblConfigStatus.Text = "Using custom configuration";
-                lblConfigStatus.ForeColor = System.Drawing.Color.FromArgb(46, 125, 50); // Green
+                // Check if custom config exists and is valid
+                // Force reload from file to get latest changes
+                bool loadedSuccessfully = _configManager.LoadConfiguration();
+
+                if (loadedSuccessfully && _configManager.IsCustomConfig)
+                {
+                    lblConfigStatus.Text = "Using custom configuration (valid)";
+                    lblConfigStatus.ForeColor = System.Drawing.Color.FromArgb(46, 125, 50); // Green
+                }
+                else
+                {
+                    lblConfigStatus.Text = "Using custom configuration (invalid/not found)";
+                    lblConfigStatus.ForeColor = System.Drawing.Color.FromArgb(220, 53, 69); // Red
+                }
             }
         }
 
@@ -143,19 +178,22 @@ namespace FileManagementTool
             // Enable/disable Edit and Reset buttons based on checkbox
             bool useCustomConfig = !chkUseDefaultConfig.Checked;
 
-            btnEditConfig.Enabled = true; // Always enabled for now
-            btnResetConfig.Enabled = true; // Always enabled
+            // Only enable Edit button when using custom config
+            btnEditConfig.Enabled = useCustomConfig;
+            btnResetConfig.Enabled = true; // Reset is always enabled
 
             // Change button appearance based on state
             if (useCustomConfig)
             {
                 btnEditConfig.BackColor = System.Drawing.Color.FromArgb(46, 125, 50); // Green
                 btnEditConfig.Text = "Edit Custom Configuration";
+                btnEditConfig.Cursor = Cursors.Hand;
             }
             else
             {
-                btnEditConfig.BackColor = System.Drawing.Color.FromArgb(0, 102, 204); // Blue
-                btnEditConfig.Text = "Edit Configuration";
+                btnEditConfig.BackColor = System.Drawing.Color.FromArgb(200, 200, 200); // Gray when disabled
+                btnEditConfig.Text = "Edit Configuration (enable custom config)";
+                btnEditConfig.Cursor = Cursors.Default;
             }
         }
 
@@ -226,12 +264,21 @@ namespace FileManagementTool
                 errorLogger.LogInfo($"Source: {sourcePath}");
                 errorLogger.LogInfo($"Destination: {destinationPath}");
                 errorLogger.LogInfo($"Using default config: {useDefaultConfig}");
+                errorLogger.LogInfo($"Config file path: {_configManager.ConfigFilePath}");
+                errorLogger.LogInfo($"Config file exists: {File.Exists(_configManager.ConfigFilePath)}");
 
                 // Step 1: Load configuration
                 UpdateProgress(10, "Loading configuration...");
                 errorLogger.LogOperation("Loading Configuration");
 
                 var categories = LoadConfiguration(useDefaultConfig);
+
+                // DEBUG: Log what we loaded
+                errorLogger.LogInfo($"Loaded {categories.Count} categories (useDefaultConfig={useDefaultConfig})");
+                foreach (var category in categories)
+                {
+                    errorLogger.LogInfo($"  - {category.Name}: {string.Join(", ", category.Extensions)}");
+                }
 
                 if (categories.Count == 0)
                 {
@@ -355,7 +402,6 @@ namespace FileManagementTool
             }
         }
 
-
         private string GetDestinationPath()
         {
             // If user provided a destination, use it
@@ -380,45 +426,30 @@ namespace FileManagementTool
         {
             if (useDefaultConfig)
             {
-                // Return default categories
-                return new List<Models.Category>
-        {
-            new Models.Category("Documents", "Documents", ".txt", ".doc", ".docx", ".pdf", ".xlsx", ".pptx", ".rtf"),
-            new Models.Category("Images", "Images", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".svg"),
-            new Models.Category("Videos", "Videos", ".mp4", ".avi", ".mov", ".wmv", ".mkv", ".flv"),
-            new Models.Category("Audio", "Audio", ".mp3", ".wav", ".aac", ".flac", ".m4a", ".ogg"),
-            new Models.Category("Archives", "Archives", ".zip", ".rar", ".7z", ".tar", ".gz"),
-            new Models.Category("Executables", "Executables", ".exe", ".msi", ".bat", ".cmd")
-        };
+                // Use default configuration
+                return _configManager.GetDefaultCategories();
             }
             else
             {
-                // Load from config file
-                string configPath = GetConfigPath();
-
-                if (File.Exists(configPath))
+                // Force reload from config file to ensure we have latest
+                if (!_configManager.LoadConfiguration())
                 {
-                    try
-                    {
-                        string json = File.ReadAllText(configPath);
-                        return System.Text.Json.JsonSerializer.Deserialize<List<Models.Category>>(json);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error loading configuration file:\n{ex.Message}\n\nUsing default configuration instead.",
-                            "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Error loading configuration file. Using default configuration instead.",
+                        "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
-                        // Fall back to default
-                        return LoadConfiguration(true);
-                    }
+                    // Fall back to defaults
+                    return _configManager.GetDefaultCategories();
                 }
-                else
+
+                // Check if we actually loaded custom config
+                if (!_configManager.IsCustomConfig)
                 {
-                    MessageBox.Show("Configuration file not found. Using default configuration.",
-                        "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                    return LoadConfiguration(true);
+                    MessageBox.Show("No valid custom configuration found. Using default configuration instead.",
+                        "Configuration Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return _configManager.GetDefaultCategories();
                 }
+
+                return _configManager.GetCategories();
             }
         }
 
@@ -482,7 +513,7 @@ namespace FileManagementTool
         {
             btnBrowseSource.Enabled = enabled;
             btnBrowseDestination.Enabled = enabled;
-            btnEditConfig.Enabled = enabled;
+            btnEditConfig.Enabled = enabled && !chkUseDefaultConfig.Checked; // Keep disabled if using default
             btnResetConfig.Enabled = enabled;
             chkUseDefaultConfig.Enabled = enabled;
             btnStart.Enabled = enabled && ValidateInputs();
@@ -530,7 +561,7 @@ namespace FileManagementTool
 
         private void panelHeader_Paint(object sender, PaintEventArgs e)
         {
-
+            // Empty paint handler
         }
     }
 }
